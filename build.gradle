@@ -1,6 +1,7 @@
 plugins {
     id "java"
     id "java-library"
+    id "maven-publish"
     id "com.gradleup.shadow" version "$gradle_shadow_version"
 }
 
@@ -48,4 +49,12 @@ shadowJar {
     }
 
     minimize()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
 }
