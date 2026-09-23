@@ -1,0 +1,51 @@
+plugins {
+    id "java"
+    id "java-library"
+    id "com.gradleup.shadow" version "$gradle_shadow_version"
+}
+
+group = project_group
+version = project_version
+
+java {
+    withSourcesJar()
+
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(java_version)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release.set(Integer.parseInt(java_version))
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.addStringOption("Xdoclint:none", "-quiet")
+    options.addStringOption("encoding", "UTF-8")
+    options.addStringOption("charSet", "UTF-8")
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly "org.projectlombok:lombok:$lombok_version"
+    annotationProcessor "org.projectlombok:lombok:$lombok_version"
+}
+
+shadowJar {
+    archiveFileName = "$project_name-${project_version}.jar"
+    destinationDirectory = file("$rootDir/build/compiled")
+
+    from(rootProject.file("LICENSE")) {
+        into("/")
+    }
+
+    outputs.cacheIf {
+        true
+    }
+
+    minimize()
+}
