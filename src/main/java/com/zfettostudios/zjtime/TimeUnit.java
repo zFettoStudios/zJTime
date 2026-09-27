@@ -30,7 +30,11 @@ public enum TimeUnit {
         return duration * this.nanos;
     }
 
-    public double fromNanos(long nanos) {
+    public double fromNanos(double nanos) {
         return nanos * this.invNanos;
+    }
+
+    public long fromNanos(long nanos) {
+        return (long)(nanos * this.invNanos);
     }
 }

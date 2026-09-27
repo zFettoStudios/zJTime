@@ -4,7 +4,6 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public final class Time implements Comparable<Time> {
@@ -49,7 +48,7 @@ public final class Time implements Comparable<Time> {
 
     public long to(TimeUnit unit) {
         Objects.requireNonNull(unit, "TimeUnit не может быть null");
-        return unit.convert(nanoseconds, TimeUnit.NANOSECONDS);
+        return unit.fromNanos(nanoseconds);
     }
 
     public <T> T to(Class<T> clazz) {
