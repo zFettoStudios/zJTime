@@ -16,7 +16,7 @@ import java.util.function.Supplier;
  * интервалами, конвертациями и асинхронными задержками.
  *
  * @since 0.1
- * @version 1.1
+ * @version 1.1.1
  * @author RandomShel
  */
 public class Time implements Comparable<Time> {
@@ -399,8 +399,9 @@ public class Time implements Comparable<Time> {
      *
      * @param startTime метка времени отсчета (в наносекундах {@link System#nanoTime()}).
      * @return {@code true}, если с момента {@code startTime} прошло больше времени, чем текущая длительность.
+     * @since 1.1.1
      */
-    public boolean isExpiredFromTimestamp(Time startTime) {
+    public boolean isExpiredFrom(Time startTime) {
         return startTime == null || System.nanoTime() >= (startTime.toNanoseconds() + toNanoseconds());
     }
 
