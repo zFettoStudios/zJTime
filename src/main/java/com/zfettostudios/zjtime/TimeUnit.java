@@ -2,59 +2,51 @@ package com.zfettostudios.zjtime;
 
 import lombok.Getter;
 
-import java.util.EnumMap;
-import java.util.Map;
-
 /**
- * Перечисление поддерживаемых единиц измерения времени.
+ * Перечисление поддерживаемых единиц измерения времени по умолчанию.
  * <p>
  * Используется для внешнего представления, конвертации и создания объектов {@link Time}.
  *
  * @since 0.1
- * @version 1.0
+ * @version 1.1
  * @author RandomShel
  */
 @Getter
-public enum TimeUnit {
+public class TimeUnit {
     /**
      * Наносекунды (1 / 1 000 000 000 секунды).
      */
-    NANOSECONDS(1L),
+    public static final TimeUnit NANOSECONDS = new TimeUnit(1L, "ns");
 
     /**
      * Микросекунды (1 / 1 000 000 секунды).
      */
-    MICROSECONDS(1_000L),
+    public static final TimeUnit MICROSECONDS = new TimeUnit(1_000L, "us");
 
     /**
      * Миллисекунды (1 / 1 000 секунды).
      */
-    MILLISECONDS(1_000_000L),
+    public static final TimeUnit MILLISECONDS = new TimeUnit(1_000_000L, "ms");
 
     /**
      * Секунды.
      */
-    SECONDS(1_000_000_000L),
+    public static final TimeUnit SECONDS = new TimeUnit(1_000_000_000L, "s");
 
     /**
      * Минуты.
      */
-    MINUTES(60_000_000_000L),
+    public static final TimeUnit MINUTES = new TimeUnit(60_000_000_000L, "m");
 
     /**
      * Часы.
      */
-    HOURS(3_600_000_000_000L),
+    public static final TimeUnit HOURS = new TimeUnit(3_600_000_000_000L, "h");
 
     /**
      * Дни.
      */
-    DAYS(86_400_000_000_000L),
-
-    /**
-     * Игровые тики Minecraft (1 тик = 50 миллисекунд = 1 / 20 секунды).
-     */
-    MINECRAFT_TICKS(50_000_000L);
+    public static final TimeUnit DAYS = new TimeUnit(86_400_000_000_000L, "d");
 
     /**
      * Количество наносекунд, содержащихся в одной единице времени.
@@ -67,40 +59,24 @@ public enum TimeUnit {
     private final double inverseNanoseconds;
 
     /**
-     * Кешированная таблица коэффициентов конвертации из различных {@link StorageUnit}.
+     * Суффикс для парсинга {@link String} в объект {@link Time}.
+     * <p>
+     * Используется в методо {@link Time#parse}.
      */
-    private final Map<StorageUnit, Double> scaleFactors = new EnumMap<>(StorageUnit.class);
+    private final String suffix;
 
     /**
      * Конструктор единицы измерения времени.
      *
      * @param nanoseconds эквивалент единицы времени в наносекундах.
+     * @param suffix суффикс для парсинга {@link String} в объект {@link Time}.
      */
-    TimeUnit(long nanoseconds) {
+    public TimeUnit(long nanoseconds, String suffix) {
         this.nanoseconds = nanoseconds;
         this.inverseNanoseconds = 1.0 / nanoseconds;
-    }
+        this.suffix = suffix;
 
-    static {
-        for (TimeUnit timeUnit : values()) {
-            for (StorageUnit storageUnit : StorageUnit.values()) {
-                timeUnit.scaleFactors.put(
-                    storageUnit,
-                    (double) storageUnit.getNanoseconds() * timeUnit.inverseNanoseconds
-                );
-            }
-        }
-    }
-
-    /**
-     * Конвертирует внутреннее хранимое значение из {@link StorageUnit} в значение данной единицы измерения.
-     *
-     * @param value       хранимое числовое значение.
-     * @param storageUnit единица хранения исходного значения.
-     * @return дробное значение времени в текущей единице измерения.
-     */
-    public double convertFromStorage(long value, StorageUnit storageUnit) {
-        return value * scaleFactors.get(storageUnit);
+        Time.TIME_UNITS.add(this);
     }
 
     /**
@@ -111,5 +87,47 @@ public enum TimeUnit {
      */
     public double convertNanoseconds(Number nanoseconds) {
         return nanoseconds.doubleValue() * this.inverseNanoseconds;
+    }
+
+    /**
+     * Конвертирует передаваемое значение из указанной единицы измерения {@link TimeUnit} в текущую.
+     *
+     * <p>Пример использования:
+     * <pre>{@code
+     *     // Перевод 5 секунд в миллисекунды:
+     *     double millis = TimeUnit.MILLISECONDS.convert(5, TimeUnit.SECONDS); // вернет 5000.0
+     * }</pre>
+     *
+     * @param value числовое значение для конвертации
+     * @param targetUnit единица измерения передаваемого значения
+     * @return сконвертированное значение в текущей единице измерения
+     * @throws IllegalArgumentException если {@code value} или {@code targetUnit} равно {@code null}
+     * @since 1.1
+     */
+    public double convert(Number value, TimeUnit targetUnit) {
+        if (value == null || targetUnit == null) throw new IllegalArgumentException("The value and targetUnit cannot be null");
+
+        if (this == targetUnit) return value.doubleValue();
+
+        return (value.doubleValue() * targetUnit.getNanoseconds()) * this.inverseNanoseconds;
+    }
+
+    /**
+     * Конвертирует передаваемое значение из указанной единицы измерения {@link TimeUnit} в текущую.
+     *
+     * <p>Пример использования:
+     * <pre>{@code
+     *     // Перевод 5 секунд в миллисекунды:
+     *     long millis = TimeUnit.MILLISECONDS.convert(5, TimeUnit.SECONDS); // вернет 5000
+     * }</pre>
+     *
+     * @param value числовое значение для конвертации
+     * @param targetUnit единица измерения передаваемого значения
+     * @return сконвертированное значение в текущей единице измерения
+     * @throws IllegalArgumentException если {@code value} или {@code targetUnit} равно {@code null}
+     * @since 1.1
+     */
+    public long convertLong(Number value, TimeUnit targetUnit) {
+        return (long) convert(value, targetUnit);
     }
 }

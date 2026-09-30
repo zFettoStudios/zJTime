@@ -39,7 +39,6 @@ dependencies {
 
 shadowJar {
     archiveFileName = "$project_name-${project_version}.jar"
-    destinationDirectory = file("$rootDir/build/compiled")
 
     from(rootProject.file("LICENSE")) {
         into("/")
