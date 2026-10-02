@@ -1,6 +1,7 @@
 package com.zfettostudios.zjtime;
 
 import lombok.Getter;
+import lombok.experimental.Accessors;
 
 /**
  * Перечисление поддерживаемых единиц измерения времени по умолчанию.
@@ -8,7 +9,7 @@ import lombok.Getter;
  * Используется для внешнего представления, конвертации и создания объектов {@link Time}.
  *
  * @since 0.1
- * @version 1.1
+ * @version 1.1.2
  * @author RandomShel
  */
 @Getter
@@ -16,37 +17,37 @@ public class TimeUnit {
     /**
      * Наносекунды (1 / 1 000 000 000 секунды).
      */
-    public static final TimeUnit NANOSECONDS = new TimeUnit(1L, "ns");
+    public static final TimeUnit NANOSECONDS = new TimeUnit(1L, "ns", "NANOSECONDS");
 
     /**
      * Микросекунды (1 / 1 000 000 секунды).
      */
-    public static final TimeUnit MICROSECONDS = new TimeUnit(1_000L, "us");
+    public static final TimeUnit MICROSECONDS = new TimeUnit(1_000L, "us", "MICROSECONDS");
 
     /**
      * Миллисекунды (1 / 1 000 секунды).
      */
-    public static final TimeUnit MILLISECONDS = new TimeUnit(1_000_000L, "ms");
+    public static final TimeUnit MILLISECONDS = new TimeUnit(1_000_000L, "ms", "MILLISECONDS");
 
     /**
      * Секунды.
      */
-    public static final TimeUnit SECONDS = new TimeUnit(1_000_000_000L, "s");
+    public static final TimeUnit SECONDS = new TimeUnit(1_000_000_000L, "s", "SECONDS");
 
     /**
      * Минуты.
      */
-    public static final TimeUnit MINUTES = new TimeUnit(60_000_000_000L, "m");
+    public static final TimeUnit MINUTES = new TimeUnit(60_000_000_000L, "m", "MINUTES");
 
     /**
      * Часы.
      */
-    public static final TimeUnit HOURS = new TimeUnit(3_600_000_000_000L, "h");
+    public static final TimeUnit HOURS = new TimeUnit(3_600_000_000_000L, "h", "HOURS");
 
     /**
      * Дни.
      */
-    public static final TimeUnit DAYS = new TimeUnit(86_400_000_000_000L, "d");
+    public static final TimeUnit DAYS = new TimeUnit(86_400_000_000_000L, "d", "DAYS");
 
     /**
      * Количество наносекунд, содержащихся в одной единице времени.
@@ -59,9 +60,18 @@ public class TimeUnit {
     private final double inverseNanoseconds;
 
     /**
+     * Название единицы измерения времени.
+     *
+     * @since 1.1.2
+     */
+    private final String name;
+
+    /**
      * Суффикс для парсинга {@link String} в объект {@link Time}.
      * <p>
      * Используется в методо {@link Time#parse}.
+     *
+     * @since 1.1
      */
     private final String suffix;
 
@@ -70,11 +80,13 @@ public class TimeUnit {
      *
      * @param nanoseconds эквивалент единицы времени в наносекундах.
      * @param suffix суффикс для парсинга {@link String} в объект {@link Time}.
+     * @param name название единицы измерения времени.
      */
-    public TimeUnit(long nanoseconds, String suffix) {
+    public TimeUnit(long nanoseconds, String suffix, String name) {
         this.nanoseconds = nanoseconds;
         this.inverseNanoseconds = 1.0 / nanoseconds;
         this.suffix = suffix;
+        this.name = name;
 
         Time.TIME_UNITS.add(this);
     }
