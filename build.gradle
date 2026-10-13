@@ -34,27 +34,31 @@ tasks.withType(Javadoc).configureEach {
     options.addStringOption("charSet", "UTF-8")
 }
 
+
 tasks.named("shadowJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
-    archiveFileName = "$project_name-${project_version}.jar"
+    archiveFileName = "$project_name-${project_version}-raw.jar"
 
     from(rootProject.file("LICENSE")) {
         into("/")
     }
 
-    outputs.cacheIf {
-        true
-    }
-
+    outputs.cacheIf { true }
     minimize()
 }
 
 tasks.named("downgradeJar", xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar) {
+    dependsOn tasks.named("jar")
     dependsOn tasks.named("shadowJar")
 
     inputFile = tasks.named("shadowJar").flatMap { it.archiveFile }
     downgradeTo = JavaVersion.VERSION_21
 
     archiveFileName = "$project_name-${project_version}.jar"
+    destinationDirectory = layout.buildDirectory.dir("libs")
+}
+
+tasks.named("jar") {
+    mustRunAfter(tasks.named("shadowJar"))
 }
 
 tasks.named("build") {
@@ -64,7 +68,15 @@ tasks.named("build") {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            from components.java
+            artifact(tasks.named("downgradeJar"))
+
+            artifact(tasks.named("sourcesJar"))
+            artifact(tasks.named("javadocJar"))
+
+            versionMapping {
+                usage('java-api') { fromResolutionOf('runtimeClasspath') }
+                usage('java-runtime') { fromResolutionOf('runtimeClasspath') }
+            }
         }
     }
 }
