@@ -3,29 +3,16 @@ plugins {
     id "java-library"
     id "maven-publish"
     id "com.gradleup.shadow" version "$gradle_shadow_version"
+    id "xyz.wagyourtail.jvmdowngrader" version "$jmvdowngrader_version"
+    id "io.freefair.lombok" version "$lombok_plugin_version"
 }
 
 group = project_group
 version = project_version
 
 java {
-    withJavadocJar()
     withSourcesJar()
-
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(java_version)
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = "UTF-8"
-    options.release.set(Integer.parseInt(java_version))
-}
-
-tasks.withType(Javadoc).configureEach {
-    options.addStringOption("Xdoclint:none", "-quiet")
-    options.addStringOption("encoding", "UTF-8")
-    options.addStringOption("charSet", "UTF-8")
+    withJavadocJar()
 }
 
 repositories {
@@ -37,7 +24,17 @@ dependencies {
     annotationProcessor "org.projectlombok:lombok:$lombok_version"
 }
 
-shadowJar {
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.addStringOption("Xdoclint:none", "-quiet")
+    options.addStringOption("encoding", "UTF-8")
+    options.addStringOption("charSet", "UTF-8")
+}
+
+tasks.named("shadowJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
     archiveFileName = "$project_name-${project_version}.jar"
 
     from(rootProject.file("LICENSE")) {
@@ -49,6 +46,19 @@ shadowJar {
     }
 
     minimize()
+}
+
+tasks.named("downgradeJar", xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar) {
+    dependsOn tasks.named("shadowJar")
+
+    inputFile = tasks.named("shadowJar").flatMap { it.archiveFile }
+    downgradeTo = JavaVersion.VERSION_21
+
+    archiveFileName = "$project_name-${project_version}.jar"
+}
+
+tasks.named("build") {
+    dependsOn tasks.named("downgradeJar")
 }
 
 publishing {
