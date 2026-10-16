@@ -1,5 +1,6 @@
 package com.zfettostudios.zjtime;
 
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -25,7 +26,7 @@ import java.util.function.Supplier;
  * и динамически интегрироваться с любыми сторонними типами данных через систему экстракторов.
  *
  * @since 0.1
- * @version 1.2
+ * @version 1.3
  * @author RandomShel
  */
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -410,69 +411,119 @@ public class Time implements Comparable<Time> {
     public boolean isAtMost(Object other) { return compareWith(other) <= 0; }
 
     /**
-     * Универсальный супер-метод проверки истечения времени (таймаута).
-     * Может принимать разное количество аргументов благодаря динамическому {@code Object... args}:
-     * <ul>
-     *     <li>{@code isTimeUp(startTime)} — проверяет, истек ли текущий объект-интервал с момента {@code startTime}.</li>
-     *     <li>{@code isTimeUp(startTime, duration)} — проверяет, истек ли кастомный интервал {@code duration} с момента {@code startTime}.</li>
-     *     <li>{@code isTimeUp(startTimeNanos)} — принимает сырой {@code long} наносекунд.</li>
-     * </ul>
+     * Проверяет, истек ли текущий интервал времени (заданный в данном объекте) с момента {@code startTime}.
      *
-     * @param args аргументы проверки (старт и опционально длительность).
-     * @return {@code true}, если время вышло.
+     * @param startTime исходная точка времени (объект {@link Time}, {@link Instant} или другой поддерживаемый тип).
+     * @return {@code true}, если текущий интервал времени полностью истек; {@code false} в противном случае.
      */
-    public boolean isTimeUp(Object... args) {
-        if (args == null || args.length == 0 || args[0] == null) return true;
+    public boolean isTimeUp(Object startTime) {
+        if (startTime == null) return true;
+        return isTimeUp(toNanosecondsSafe(startTime), this.toNanoseconds());
+    }
 
-        long startNanos;
-        if (args[0] instanceof Number num && args.length == 1) startNanos = num.longValue();
-        else startNanos = toNanosecondsSafe(args[0]);
+    /**
+     * Проверяет, истек ли кастомный интервал времени {@code duration} с момента {@code startTime}.
+     *
+     * @param startTime исходная точка времени (объект {@link Time}, {@link Instant} или другой поддерживаемый тип).
+     * @param duration  длительность кастомного интервала времени.
+     * @return {@code true}, если кастомный интервал времени полностью истек; {@code false} в противном случае.
+     */
+    public boolean isTimeUp(Object startTime, Object duration) {
+        if (startTime == null) return true;
+        Time resolvedDuration = resolveDuration(duration);
+        long durationNanos = (resolvedDuration != null) ? resolvedDuration.toNanoseconds() : this.toNanoseconds();
+        return isTimeUp(toNanosecondsSafe(startTime), durationNanos);
+    }
 
-        long durationNanos = (args.length > 1 && args[1] != null)
-            ? Objects.requireNonNull(resolveDuration(args[1])).toNanoseconds()
-            : this.toNanoseconds();
+    /**
+     * Проверяет, истек ли текущий интервал времени с момента, заданного в сырых наносекундах.
+     *
+     * @param startTimeNanos точка старта в наносекундах (например, полученная из {@link System#nanoTime()}).
+     * @return {@code true}, если текущий интервал времени полностью истек; {@code false} в противном случае.
+     */
+    public boolean isTimeUp(long startTimeNanos) {
+        return isTimeUp(startTimeNanos, this.toNanoseconds());
+    }
 
+    /**
+     * Внутренний приватный метод с чистой математикой для исключения дублирования логики.
+     */
+    private static boolean isTimeUp(long startNanos, long durationNanos) {
         if (durationNanos <= 0) return true;
-
         if (Long.MAX_VALUE - durationNanos < startNanos) return false;
-
         return System.nanoTime() >= (startNanos + durationNanos);
     }
 
     /**
-     * Статическая перегрузка для проверки тайм-аута без создания инстанса {@link Time}.
+     * Проверяет тайм-аут без необходимости создания инстанса {@link Time}.
+     *
+     * @param startTime исходная точка времени.
+     * @param duration  длительность интервала проверки.
+     * @return {@code true}, если интервал времени полностью истек.
      */
     public static boolean checkTimeUp(Object startTime, Object duration) {
+        if (startTime == null) return true;
         Time resolvedDuration = resolveDuration(duration);
         if (resolvedDuration == null) return true;
-        return resolvedDuration.isTimeUp(startTime);
+        return isTimeUp(toNanosecondsSafe(startTime), resolvedDuration.toNanoseconds());
     }
 
     /**
-     * Универсальный метод расчета оставшегося времени.
-     * Принимает старт и опциональную длительность. Возвращает объект {@link Time} с остатком или {@link #ZERO}.
+     * Вычисляет оставшееся время до окончания интервала, заданного текущим объектом {@link Time},
+     * относительно начальной точки {@code startTime}.
+     *
+     * @param startTime начальная точка времени (объект {@link Time}, {@link java.time.Instant} или другой поддерживаемый тип).
+     * @return объект {@link Time} с оставшимся временем, или {@link #ZERO}, если время уже истекло.
      */
-    public static Time remaining(Object... args) {
-        if (args == null || args.length == 0 || args[0] == null) return ZERO;
+    public Time remaining(Object startTime) {
+        if (startTime == null) return ZERO;
+        return remaining(toNanosecondsSafe(startTime), this.toNanoseconds());
+    }
 
-        Time startTime = resolveDuration(args[0]);
-        Time duration = (args.length > 1 && args[1] != null) ? resolveDuration(args[1]) : ZERO;
-
+    /**
+     * Статический метод расчета оставшегося времени для кастомного интервала {@code duration}
+     * относительно начальной точки {@code startTime}.
+     *
+     * @param startTime начальная точка времени.
+     * @param duration  длительность интервала (объект {@link Time} или другой поддерживаемый тип).
+     * @return объект {@link Time} с оставшимся временем, или {@link #ZERO}, если время уже истекло.
+     */
+    public static Time remaining(Object startTime, Object duration) {
         if (startTime == null || duration == null) return ZERO;
 
-        long startNanos = startTime.toNanoseconds();
-        long durationNanos = duration.toNanoseconds();
+        long startNanos = toNanosecondsSafe(startTime);
+        Time resolvedDuration = resolveDuration(duration);
+        if (resolvedDuration == null) return ZERO;
+
+        return remaining(startNanos, resolvedDuration.toNanoseconds());
+    }
+
+    /**
+     * Статический метод расчета оставшегося времени, принимающий сырые наносекунды точки старта.
+     *
+     * @param startTimeNanos точка старта в наносекундах (например, из {@link System#nanoTime()}).
+     * @param duration       длительность интервала.
+     * @return объект {@link Time} с оставшимся временем.
+     */
+    public static Time remaining(long startTimeNanos, Time duration) {
+        if (duration == null) return ZERO;
+        return remaining(startTimeNanos, duration.toNanoseconds());
+    }
+
+    /**
+     * Внутренний приватный метод с математикой расчета для исключения дублирования кода.
+     */
+    private static Time remaining(long startNanos, long durationNanos) {
+        if (durationNanos <= 0) return ZERO;
+
+        if (Long.MAX_VALUE - durationNanos < startNanos) return of(durationNanos, TimeUnit.NANOSECONDS);
+
         long currentNanos = System.nanoTime();
-
-        if (Long.MAX_VALUE - durationNanos < startNanos) return duration;
-
         long remainingNanos = (startNanos + durationNanos) - currentNanos;
+
         return remainingNanos <= 0 ? ZERO : of(remainingNanos, TimeUnit.NANOSECONDS);
     }
 
-    public Time remaining(Object startTime) {
-        return remaining(startTime, this);
-    }
 
     private static long toNanosecondsSafe(Object object) {
         return switch (object) {
