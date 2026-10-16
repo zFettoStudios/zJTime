@@ -36,7 +36,7 @@ tasks.withType(Javadoc).configureEach {
 
 
 tasks.named("shadowJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
-    archiveFileName = "$project_name-${project_version}-raw.jar"
+    archiveFileName = "$project_name-${project_version}.jar"
 
     from(rootProject.file("LICENSE")) {
         into("/")
@@ -68,7 +68,9 @@ tasks.named("build") {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifact(tasks.named("downgradeJar"))
+            artifact(tasks.named("downgradeJar").flatMap { it.archiveFile }) {
+                classifier = ""
+            }
 
             artifact(tasks.named("sourcesJar"))
             artifact(tasks.named("javadocJar"))
