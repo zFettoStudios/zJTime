@@ -1,18 +1,15 @@
 package com.zfettostudios.zjtime;
 
-import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.function.Function;
@@ -26,12 +23,11 @@ import java.util.function.Supplier;
  * и динамически интегрироваться с любыми сторонними типами данных через систему экстракторов.
  *
  * @since 0.1
- * @version 1.3
+ * @version 2.0
  * @author RandomShel
  */
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Getter
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Time implements Comparable<Time> {
     /**
      * Глобальная константа, представляющая нулевую длительность.
@@ -47,11 +43,6 @@ public class Time implements Comparable<Time> {
      * Реестр экстракторов для извлечения времени из сторонних объектов.
      */
     public static final Map<Class<?>, SafeExtractor<?>> EXTRACTORS = new ConcurrentHashMap<>();
-
-    /**
-     * Набор поддерживаемых единиц измернеия для динамического парсинга текста.
-     */
-    public static final Set<TimeUnit> TIME_UNITS = new CopyOnWriteArraySet<>();
 
     static {
         register(new SafeExtractor<>(Duration.class) {
@@ -81,10 +72,10 @@ public class Time implements Comparable<Time> {
     }
 
     /** Числовое значение длительности во внутренней единице измерения. */
-    long value;
+    @NonFinal long value;
 
     /** Базовая единица измерения, в которой хранится значение {@link #value}. */
-    final TimeUnit storageUnit;
+    TimeUnit storageUnit;
 
     /**
      * Создает объект {@link Time} с указанным числовым значением и единицей измерения.
@@ -165,25 +156,6 @@ public class Time implements Comparable<Time> {
     }
 
     /**
-     * Добавляет кастомную единицу измерения в глобальный пул парсинга текстов.
-     *
-     * @param timeUnit  единица измерения.
-     * @return добавленная единица.
-     */
-    public static TimeUnit addTimeUnit(TimeUnit timeUnit) {
-        if (timeUnit != null) TIME_UNITS.add(timeUnit);
-        return timeUnit;
-    }
-
-    /**
-     * Удаляет единицу измерения из пула парсинга.
-     */
-    public static TimeUnit removeTimeUnit(TimeUnit timeUnit) {
-        if (timeUnit != null) TIME_UNITS.remove(timeUnit);
-        return timeUnit;
-    }
-
-    /**
      * Абстрактный инструмент безопасности для создания экстракторов из сторонних классов без опасных кастов.
      *
      * @param <T> целевой тип данных.
@@ -226,6 +198,46 @@ public class Time implements Comparable<Time> {
         return timeUnit.convert(value, storageUnit, target);
     }
 
+
+    /**
+     * Проверяет, истек ли кастомный интервал {@code duration} с момента этой точки старта.
+     * <p>
+     * Метод берет текущее системное время за конечную точку и смотрит,
+     * прошло ли достаточно времени от метки, хранящейся в этом объекте.
+     *
+     * @param duration длительность интервала проверки (объект {@link Time} или другой поддерживаемый тип).
+     * @return {@code true}, если с момента этой точки старта прошло больше времени, чем задано в {@code duration}.
+     * @since 1.3
+     */
+    public boolean isPassed(Object duration) {
+        Time resolvedDuration = resolveDuration(duration);
+        if (resolvedDuration == null) return true;
+
+        long startNanos = this.toNanoseconds();
+        long durationNanos = resolvedDuration.toNanoseconds();
+
+        if (durationNanos <= 0) return true;
+        // Защита от переполнения шкалы Long.MAX_VALUE
+        if (Long.MAX_VALUE - durationNanos < startNanos) return false;
+
+        return System.nanoTime() >= (startNanos + durationNanos);
+    }
+
+    /**
+     * Перегрузка для проверки истечения интервала, заданного в сырых наносекундах.
+     *
+     * @param durationNanos длительность интервала в наносекундах.
+     * @return {@code true}, если интервал времени полностью прошел.
+     * @since 1.3
+     */
+    public boolean isPassed(long durationNanos) {
+        if (durationNanos <= 0) return true;
+        long startNanos = this.toNanoseconds();
+
+        if (Long.MAX_VALUE - durationNanos < startNanos) return false;
+        return System.nanoTime() >= (startNanos + durationNanos);
+    }
+
     /**
      * Парсит строковое представление времени (например: "10s", "2.5m", "500ms") в объект {@link Time}.
      *
@@ -242,7 +254,7 @@ public class Time implements Comparable<Time> {
         int inputLength = input.length();
         int suffixLength = inputLength - textCharIndex;
 
-        for (TimeUnit timeUnit : TIME_UNITS) {
+        for (TimeUnit timeUnit : TimeUnit.UNITS) {
             CharSequence unitSuffix = timeUnit.getSuffix();
             if (unitSuffix.length() == suffixLength && regionMatchesIgnoreCase(input, textCharIndex, unitSuffix, 0, suffixLength))
                 return of(value, timeUnit);
@@ -472,7 +484,7 @@ public class Time implements Comparable<Time> {
      * Вычисляет оставшееся время до окончания интервала, заданного текущим объектом {@link Time},
      * относительно начальной точки {@code startTime}.
      *
-     * @param startTime начальная точка времени (объект {@link Time}, {@link java.time.Instant} или другой поддерживаемый тип).
+     * @param startTime начальная точка времени (объект {@link Time}, {@link Instant} или другой поддерживаемый тип).
      * @return объект {@link Time} с оставшимся временем, или {@link #ZERO}, если время уже истекло.
      */
     public Time remaining(Object startTime) {

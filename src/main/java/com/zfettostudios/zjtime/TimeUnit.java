@@ -1,19 +1,25 @@
 package com.zfettostudios.zjtime;
 
-import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.experimental.FieldDefaults;
+
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * Единица измерения времени.
  *
  * @since 0.1
- * @version 1.2
+ * @version 2.0
  * @author RandomShel
  */
 @Getter
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class TimeUnit {
+    /**
+     * Набор поддерживаемых единиц измерения для динамического парсинга текста.
+     * @since 2.0
+     */
+    public static final Set<TimeUnit> UNITS = new CopyOnWriteArraySet<>();
+
     /**
      * Наносекунды {@code (1 / 1 000 000 000 секунды)}.
      */
@@ -91,7 +97,7 @@ public class TimeUnit {
      * @since 1.2
      */
     public static TimeUnit create(long nanoseconds, CharSequence name, CharSequence suffix) {
-        return Time.addTimeUnit(new TimeUnit(nanoseconds, name, suffix));
+        return addTimeUnit(new TimeUnit(nanoseconds, name, suffix));
     }
 
     /**
@@ -147,5 +153,55 @@ public class TimeUnit {
         else result = (value.doubleValue() * targetUnit.nanoseconds) * inverseNanoseconds;
 
         return Utils.getObjectNumber(result, target);
+    }
+
+    /**
+     * Добавляет кастомную единицу измерения в глобальный пул парсинга текстов.
+     *
+     * @param timeUnit  единица измерения.
+     * @return добавленная единица.
+     * @since 2.0
+     */
+    public static TimeUnit addTimeUnit(TimeUnit timeUnit) {
+        if (timeUnit != null) UNITS.add(timeUnit);
+        return timeUnit;
+    }
+
+    /**
+     * Удаляет единицу измерения из пула парсинга.
+     * @since 2.0
+     */
+    public static TimeUnit removeTimeUnit(TimeUnit timeUnit) {
+        if (timeUnit != null) UNITS.remove(timeUnit);
+        return timeUnit;
+    }
+
+    /**
+     * Парсить строку в {@link TimeUnit}.
+     *
+     * @param string строка.
+     * @param ignoreCase игнорировать регистр при парсинге?
+     * @return найденный {@link TimeUnit} в строке.
+     * @since 2.0
+     */
+    public static TimeUnit parse(String string, boolean ignoreCase) {
+        for (TimeUnit unit : UNITS) {
+            if (ignoreCase) if (string.equalsIgnoreCase(unit.getName().toString())) return unit;
+            else if (string.equals(unit.getName().toString())) return unit;
+        }
+
+        return null;
+    }
+
+    /**
+     * Парсить строку в {@link TimeUnit} игнорируя регистр.
+     *
+     * @param string строка.
+     * @return найденный {@link TimeUnit} в строке.
+     * @since 2.0
+     * @see parse(String, boolean)
+     */
+    public static TimeUnit parse(String string) {
+        return parse(string, true);
     }
 }

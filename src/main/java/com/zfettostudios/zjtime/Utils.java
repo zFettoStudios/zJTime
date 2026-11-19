@@ -1,17 +1,14 @@
 package com.zfettostudios.zjtime;
 
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.experimental.Accessors;
-import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.experimental.Tolerate;
 import lombok.experimental.UtilityClass;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -91,13 +88,12 @@ public class Utils {
     @Getter
     @Accessors(fluent = true)
     @NoArgsConstructor(staticName = "of")
-    @FieldDefaults(level = AccessLevel.PRIVATE)
     public static class OptionalException {
         /** Имена проверяемых аргументов для формирования текста исключения. */
-        String[] arguments;
+        @NonFinal String[] arguments;
 
         /** Значения проверяемых аргументов. */
-        Object[] objects;
+        @NonFinal Object[] objects;
 
         /**
          * Устанавливает массив имен аргументов для проверки.
